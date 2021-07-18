@@ -1,0 +1,102 @@
+"""The Google of Quotes"""
+"""All of the s parameters have a default value of fullText which is the quotes.txt file provided for this class"""
+import re
+import math
+fullText = 'quotes.txt'
+"""takes one parameter with the quotes.txt as a default. This function goes through each line and turns it into a list of quotes"""
+def readQuotes(s = fullText):
+    newList = []
+    i = 0
+    fb = open(s,'r')
+    quote = fb.readline()
+    author = fb.readline()
+    while quote != '':
+        newList.append(quote.rstrip('\n') + " - " + author.rstrip('\n'))
+        quote = fb.readline()
+        author = fb.readline()
+        i+=1
+    return newList
+    fb.close()
+"""Takes one parameter, quote, and splits up the quote into a list of the strings used in the quote"""
+def splitQuote(quote):
+    lQuote = quote.lower()
+    sQuote = re.split('[^\w]',lQuote)
+    while "" in sQuote:
+        sQuote.remove('')
+    return sQuote
+"""Takes one parameter, s and reads in the quotes. Then takes in the read in quotes and splits them into lists of individual words. 
+Then returns a dictionary with key quote, value a dictionary with key each word and value the number of times the word is used in the quote."""
+def postListingDict(s = fullText):
+    fullDict = {}
+    listOfQuotes = readQuotes(s)
+    for quote in listOfQuotes:
+        
+        fullList = splitQuote(quote)
+        checkDict = {}
+        for item in fullList:
+            if(item in checkDict):
+                checkDict[item] +=1
+            else:
+                checkDict[item] = 1
+        fullDict[quote] = checkDict
+    return fullDict
+"""Takes a parameter s and takes dictionary and flips it by rearranging the keys and the values"""
+def reversePostingListDict(s = fullText):
+    quoteDict = postListingDict(s)
+    reverseDict = {}
+    for item, values in quoteDict.items():
+        for ourKey in values.keys():
+            if ourKey in reverseDict.keys():
+                reverseDict[ourKey][item] = values[ourKey]
+            else:
+                reverseDict[ourKey] = {item:values[ourKey]}
+    return reverseDict
+"""Takes choiceword and quote as parameters and counts how many times a given word is said in each quote it is in and the total times it is in a quote.
+Then produces the TFIDF which is the product of TF (number of occurrences in the quote/max value for occurrences in the quote)
+and the IDF (log(total number of quotes/number of quotes that the given word is in))"""
+
+    
+def TFIDF(choiceWord,quote,s = fullText):
+    word = choiceWord.lower()
+    reverse = reversePostingListDict(s)
+    forward = postListingDict(s)
+    if quote not in forward.keys():
+        return 0
+    elif word not in forward[quote].keys():
+        return 0
+    else:  
+        w = forward[quote][word]
+        q = max(forward[quote].values())
+    TF = w/q
+    N = len(readQuotes(s))
+    numQuotes = len(reverse[word].values())
+    IDF = math.log10(N/numQuotes)
+    TFIDF = TF * IDF
+    return round(TFIDF,3)
+"""Takes in the choiceWord and s and takes the reversePosting List of the full text. Then checks where the word is present and creates a dictionary with the keys being each quote the word is in and the values being TFIDF of the word in the given quote."""
+def singleSearch(choiceWord,s = fullText):
+    word = choiceWord.lower()
+    reverse = reversePostingListDict(s)
+    if word not in reverse.keys():
+        return {}
+    searchedDict = reverse[word]
+    for key in searchedDict.keys():
+        searchedDict[key] = TFIDF(word,key,s)
+    return searchedDict
+"""Takes a parameter of a list of words and a full text and uses singleSearch for each of the words and then merges the dictionary by checking if for repeats and adding the values when there is a repeat """
+def multipleSearch(listOfWords,s = fullText):
+    multiDictionary = singleSearch(listOfWords[0],s)
+    if len(listOfWords) == 1:
+        return 
+    words = listOfWords[1:]
+    for item in words:
+        item = item.lower()
+        temp = singleSearch(item,s)
+        for key in temp.keys():
+            if key in multiDictionary.keys():
+                multiDictionary[key] = multiDictionary[key] + TFIDF(item,key,s)
+            else:
+                multiDictionary[key] = TFIDF(item,key,s)
+    return multiDictionary
+
+multipleSearch(['heart','mind','disease'])
